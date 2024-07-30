@@ -18,9 +18,11 @@
 #  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 
+from cmath import e
 import json
 import random
 import urllib.request
+import urllib.error
 
 # Server API URLs
 QUERY = "http://localhost:8080/query?id={}"
@@ -32,28 +34,48 @@ N = 500
 def getDataPoint(quote):
     """ Produce all the needed values to generate a datapoint """
     """ ------------- Update this function ------------- """
+   
     stock = quote['stock']
     bid_price = float(quote['top_bid']['price'])
     ask_price = float(quote['top_ask']['price'])
-    price = bid_price
+    price = (bid_price + ask_price) / 2
     return stock, bid_price, ask_price, price
-
 
 def getRatio(price_a, price_b):
     """ Get ratio of price_a and price_b """
     """ ------------- Update this function ------------- """
+    
+    if price_b == 0:
+        return None  # Avoid division by zero
+    return price_a / price_b
     return 1
 
 
 # Main
+def new_func():
+    print(f"Unexpected error occurred: {e}")
+
 if __name__ == "__main__":
     # Query the price once every N seconds.
-    for _ in iter(range(N)):
-        quotes = json.loads(urllib.request.urlopen(QUERY.format(random.random())).read())
+     for _ in iter(range(N)):
+        try:
+            response = urllib.request.urlopen(QUERY.format(random.random()), timeout=10)
+            quotes = json.loads(response.read())
 
-        """ ----------- Update to get the ratio --------------- """
-        for quote in quotes:
-            stock, bid_price, ask_price, price = getDataPoint(quote)
-            print("Quoted %s at (bid:%s, ask:%s, price:%s)" % (stock, bid_price, ask_price, price))
+            prices = {}
+            for quote in quotes:
+                stock, bid_price, ask_price, price = getDataPoint(quote)
+                prices[stock] = price
+                print("Quoted %s at (bid:%s, ask:%s, price:%s)" % (stock, bid_price, ask_price, price))
 
-        print("Ratio %s" % getRatio(price, price))
+            if len(prices) >= 2:
+                stock_list = list(prices.keys())
+                ratio = getRatio(prices[stock_list[0]], prices[stock_list[1]])
+                print("Ratio %s" % ratio)
+
+        except urllib.error.HTTPError as e:
+            print(f"HTTP error occurred: {e}")
+        except urllib.error.URLError as e:
+            print(f"URL error occurred: {e}")
+        except Exception as e:
+            print(f"Unexpected error occurred: {e}")
